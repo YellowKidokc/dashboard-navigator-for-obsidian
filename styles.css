@@ -1837,3 +1837,15 @@ span.dn-td-excluded-tags {
 	}
 
 }
+.dashboardpp-script-card {
+	border: 1px solid var(--background-modifier-border);
+	padding: 12px;
+	margin-bottom: 10px;
+	border-radius: 8px;
+}
+
+.dashboardpp-script-actions {
+	display: flex;
+	gap: 8px;
+	flex-wrap: wrap;
+}
