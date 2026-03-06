@@ -1,0 +1,565 @@
+"""
+HTML Dashboard Generator for CDCM Analysis
+Creates dark-themed interactive dashboards with Chart.js visualizations
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+from datetime import datetime
+
+
+DARK_THEME_CSS = """
+:root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-tertiary: #21262d;
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --accent-blue: #58a6ff;
+    --accent-green: #3fb950;
+    --accent-yellow: #d29922;
+    --accent-red: #f85149;
+    --border: #30363d;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.header {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.header h1 {
+    font-size: 28px;
+    margin-bottom: 8px;
+    color: var(--accent-blue);
+}
+
+.header .subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.metric-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.metric-card:hover {
+    border-color: var(--accent-blue);
+    transform: translateY(-2px);
+}
+
+.metric-card .label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.metric-card .value {
+    font-size: 32px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.metric-card .value.good { color: var(--accent-green); }
+.metric-card .value.warning { color: var(--accent-yellow); }
+.metric-card .value.bad { color: var(--accent-red); }
+
+.metric-card .context {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.chart-container {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.chart-container h2 {
+    font-size: 18px;
+    margin-bottom: 16px;
+    color: var(--accent-blue);
+}
+
+.chart-wrapper {
+    position: relative;
+    height: 400px;
+}
+
+.comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.comparison-table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: left;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.comparison-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.comparison-table tr:last-child td {
+    border-bottom: none;
+}
+
+.comparison-table tr:hover {
+    background: var(--bg-tertiary);
+}
+
+.rank-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.rank-1 { background: var(--accent-green); color: #000; }
+.rank-2 { background: var(--accent-blue); color: #000; }
+.rank-3 { background: var(--accent-yellow); color: #000; }
+
+.footer {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+}
+"""
+
+
+class CDCMDashboardGenerator:
+    """Generates HTML dashboards for CDCM analysis results."""
+    
+    def __init__(self):
+        self.dark_mode = True
+    
+    def generate_framework_dashboard(
+        self,
+        framework_name: str,
+        metrics: Dict[str, Any],
+        axioms_data: List[Dict[str, Any]],
+        output_path: Path
+    ):
+        """Generate single framework analysis dashboard."""
+        
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{framework_name} - CDCM Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>{DARK_THEME_CSS}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>{framework_name}</h1>
+            <p class="subtitle">Cross-Domain Coherence Metric Analysis | Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+        </div>
+        
+        {self._generate_key_metrics_grid(metrics)}
+        
+        {self._generate_constraint_radar(metrics, framework_name)}
+        
+        {self._generate_axiom_scores_chart(axioms_data, framework_name)}
+        
+        {self._generate_detailed_metrics_table(metrics)}
+        
+        <div class="footer">
+            <p>Generated by Theophysics Backend | CDCM System v2.0</p>
+        </div>
+    </div>
+    
+    <script>
+        Chart.defaults.color = '#8b949e';
+        Chart.defaults.borderColor = '#30363d';
+    </script>
+</body>
+</html>"""
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        
+        print(f"Dashboard generated: {output_path}")
+    
+    def _generate_key_metrics_grid(self, metrics: Dict[str, Any]) -> str:
+        """Generate grid of key metric cards."""
+        
+        mean_net = metrics.get('mean_net_score', 0)
+        fracture = metrics.get('fracture_rate', 0)
+        coverage = metrics.get('constraint_coverage_ratio', 0)
+        efficiency = metrics.get('constraint_efficiency', 0)
+        
+        # Determine status colors
+        mean_status = 'good' if mean_net >= 5 else ('warning' if mean_net >= 3 else 'bad')
+        fracture_status = 'good' if fracture < 20 else ('warning' if fracture < 40 else 'bad')
+        coverage_status = 'good' if coverage >= 0.8 else ('warning' if coverage >= 0.6 else 'bad')
+        efficiency_status = 'good' if efficiency >= 4 else ('warning' if efficiency >= 2 else 'bad')
+        
+        return f"""
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="label">Mean Net Score</div>
+                <div class="value {mean_status}">{mean_net}</div>
+                <div class="context">≥5.0 good, ≥3.0 moderate, <3.0 poor</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="label">Fracture Rate</div>
+                <div class="value {fracture_status}">{fracture}%</div>
+                <div class="context"><20% good, 20-40% moderate, >40% poor</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="label">Constraint Coverage</div>
+                <div class="value {coverage_status}">{coverage:.1%}</div>
+                <div class="context">≥80% complete, 60-80% partial, <60% incomplete</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="label">Constraint Efficiency</div>
+                <div class="value {efficiency_status}">{efficiency:.1f}</div>
+                <div class="context">≥4.0 efficient, 2-4 moderate, <2 inefficient</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="label">Phase Transition Proximity</div>
+                <div class="value">{metrics.get('phase_transition_proximity', 0):.1f}</div>
+                <div class="context">>3 stable, 1-3 vulnerable, <1 critical</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="label">Positive Directionality</div>
+                <div class="value">{metrics.get('positive_directionality_ratio', 0):.1%}</div>
+                <div class="context">>80% coherence-increasing</div>
+            </div>
+        </div>
+        """
+    
+    def _generate_constraint_radar(self, metrics: Dict[str, Any], name: str) -> str:
+        """Generate radar chart for constraint satisfaction."""
+        
+        # These would come from detailed constraint data
+        # For now, show overall metrics in radar form
+        
+        return f"""
+        <div class="chart-container">
+            <h2>Metric Distribution</h2>
+            <div class="chart-wrapper">
+                <canvas id="radarChart"></canvas>
+            </div>
+        </div>
+        
+        <script>
+        new Chart(document.getElementById('radarChart'), {{
+            type: 'radar',
+            data: {{
+                labels: ['Coverage', 'Efficiency', 'Stability', 'Directionality', 'Economy'],
+                datasets: [{{
+                    label: '{name}',
+                    data: [
+                        {metrics.get('constraint_coverage_ratio', 0) * 100},
+                        {metrics.get('constraint_efficiency', 0) * 10},
+                        {100 - metrics.get('fracture_rate', 0)},
+                        {metrics.get('positive_directionality_ratio', 0) * 100},
+                        {min(metrics.get('constraint_efficiency', 0) * 20, 100)}
+                    ],
+                    backgroundColor: 'rgba(88, 166, 255, 0.2)',
+                    borderColor: 'rgba(88, 166, 255, 1)',
+                    borderWidth: 2
+                }}]
+            }},
+            options: {{
+                scales: {{
+                    r: {{
+                        beginAtZero: true,
+                        max: 100,
+                        ticks: {{ display: false }}
+                    }}
+                }},
+                plugins: {{
+                    legend: {{ display: false }}
+                }}
+            }}
+        }});
+        </script>
+        """
+    
+    def _generate_axiom_scores_chart(self, axioms_data: List[Dict], name: str) -> str:
+        """Generate bar chart of axiom net scores."""
+        
+        labels = [ax['axiom_id'] for ax in axioms_data]
+        scores = [ax['net_score'] for ax in axioms_data]
+        colors = ['rgba(63, 185, 80, 0.8)' if s > 0 else 'rgba(248, 81, 73, 0.8)' for s in scores]
+        
+        return f"""
+        <div class="chart-container">
+            <h2>Axiom Net Scores</h2>
+            <div class="chart-wrapper">
+                <canvas id="axiomChart"></canvas>
+            </div>
+        </div>
+        
+        <script>
+        new Chart(document.getElementById('axiomChart'), {{
+            type: 'bar',
+            data: {{
+                labels: {labels},
+                datasets: [{{
+                    label: 'Net Score',
+                    data: {scores},
+                    backgroundColor: {colors}
+                }}]
+            }},
+            options: {{
+                indexAxis: 'y',
+                scales: {{
+                    x: {{ 
+                        beginAtZero: true,
+                        grid: {{ color: '#30363d' }}
+                    }},
+                    y: {{ grid: {{ display: false }} }}
+                }},
+                plugins: {{
+                    legend: {{ display: false }}
+                }}
+            }}
+        }});
+        </script>
+        """
+    
+    def _generate_detailed_metrics_table(self, metrics: Dict[str, Any]) -> str:
+        """Generate detailed metrics table."""
+        
+        rows = []
+        for key, value in metrics.items():
+            # Format key nicely
+            label = key.replace('_', ' ').title()
+            
+            # Format value
+            if isinstance(value, float):
+                if 'ratio' in key or 'rate' in key:
+                    formatted = f"{value:.1%}"
+                else:
+                    formatted = f"{value:.2f}"
+            else:
+                formatted = str(value)
+            
+            rows.append(f"<tr><td>{label}</td><td>{formatted}</td></tr>")
+        
+        return f"""
+        <div class="chart-container">
+            <h2>All Metrics</h2>
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {''.join(rows)}
+                </tbody>
+            </table>
+        </div>
+        """
+    
+    def generate_comparison_dashboard(
+        self,
+        comparison_data: Dict[str, Any],
+        output_path: Path
+    ):
+        """Generate comparative analysis dashboard for multiple frameworks."""
+        
+        frameworks = comparison_data.get('frameworks', [])
+        metrics_data = comparison_data.get('metrics', {})
+        
+        html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Framework Comparison - CDCM Analysis</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>{DARK_THEME_CSS}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Framework Comparison</h1>
+            <p class="subtitle">Comparing {len(frameworks)} frameworks | Generated {datetime.now().strftime('%Y-%m-%d %H:%M')}</p>
+        </div>
+        
+        {self._generate_comparison_table(frameworks, metrics_data)}
+        
+        {self._generate_comparative_charts(frameworks, metrics_data)}
+        
+        <div class="footer">
+            <p>Generated by Theophysics Backend | CDCM System v2.0</p>
+        </div>
+    </div>
+    
+    <script>
+        Chart.defaults.color = '#8b949e';
+        Chart.defaults.borderColor = '#30363d';
+    </script>
+</body>
+</html>"""
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        
+        print(f"Comparison dashboard generated: {output_path}")
+    
+    def _generate_comparison_table(self, frameworks: List[str], metrics_data: Dict) -> str:
+        """Generate comparison table for key metrics."""
+        
+        key_metrics = [
+            'mean_net_score',
+            'fracture_rate',
+            'constraint_coverage_ratio',
+            'constraint_efficiency',
+            'positive_directionality_ratio',
+        ]
+        
+        headers = '<tr><th>Framework</th>' + ''.join([
+            f'<th>{m.replace("_", " ").title()}</th>' for m in key_metrics
+        ]) + '</tr>'
+        
+        rows = []
+        for framework in frameworks:
+            row_cells = [f'<td><strong>{framework}</strong></td>']
+            for metric in key_metrics:
+                value = metrics_data.get(metric, {}).get(framework, 0)
+                if 'ratio' in metric or 'rate' in metric:
+                    formatted = f"{value:.1%}" if isinstance(value, float) and value <= 1 else f"{value:.1f}%"
+                else:
+                    formatted = f"{value:.2f}" if isinstance(value, float) else str(value)
+                row_cells.append(f'<td>{formatted}</td>')
+            
+            rows.append('<tr>' + ''.join(row_cells) + '</tr>')
+        
+        return f"""
+        <div class="chart-container">
+            <h2>Key Metrics Comparison</h2>
+            <table class="comparison-table">
+                <thead>{headers}</thead>
+                <tbody>{''.join(rows)}</tbody>
+            </table>
+        </div>
+        """
+    
+    def _generate_comparative_charts(self, frameworks: List[str], metrics_data: Dict) -> str:
+        """Generate comparison charts."""
+        
+        # Mean net score comparison
+        mean_scores = [metrics_data.get('mean_net_score', {}).get(f, 0) for f in frameworks]
+        colors = ['rgba(88, 166, 255, 0.8)'] * len(frameworks)
+        
+        return f"""
+        <div class="chart-container">
+            <h2>Mean Net Score Comparison</h2>
+            <div class="chart-wrapper">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+        </div>
+        
+        <script>
+        new Chart(document.getElementById('comparisonChart'), {{
+            type: 'bar',
+            data: {{
+                labels: {frameworks},
+                datasets: [{{
+                    label: 'Mean Net Score',
+                    data: {mean_scores},
+                    backgroundColor: {colors}
+                }}]
+            }},
+            options: {{
+                scales: {{
+                    y: {{ beginAtZero: true }}
+                }},
+                plugins: {{
+                    legend: {{ display: false }}
+                }}
+            }}
+        }});
+        </script>
+        """
+
+
+def generate_dashboard(analyzer, framework_name: str, output_dir: Path):
+    """Convenience function to generate dashboard for a framework."""
+    framework = analyzer.get_framework(framework_name)
+    if not framework:
+        print(f"Framework '{framework_name}' not found")
+        return
+    
+    generator = CDCMDashboardGenerator()
+    
+    metrics = framework.get_all_metrics()
+    axioms_data = [
+        {
+            'axiom_id': ax.axiom_id,
+            'net_score': ax.net_score,
+            'scores': ax.scores_list,
+        }
+        for ax in framework.axioms
+    ]
+    
+    output_path = output_dir / f"{framework_name.replace(' ', '_')}_dashboard.html"
+    generator.generate_framework_dashboard(framework_name, metrics, axioms_data, output_path)
+    
+    return output_path
