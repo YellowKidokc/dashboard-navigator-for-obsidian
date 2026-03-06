@@ -884,5 +884,74 @@ export class DNSettingTab extends PluginSettingTab {
                 });
             });
 
+
+        new Setting(containerEl)
+            .setName('Dashboard++')
+            .setHeading();
+
+        new Setting(containerEl)
+            .setName('Enable script execution')
+            .setDesc('Allow Dashboard++ script actions to execute commands.')
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.dashboardpp_enable_script_execution)
+                    .onChange(async (val) => {
+                        this.plugin.settings.dashboardpp_enable_script_execution = val;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName('Show only safe scripts')
+            .setDesc('Hide unsafe or destructive scripts from Dashboard++ script panel.')
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.dashboardpp_only_safe_scripts)
+                    .onChange(async (val) => {
+                        this.plugin.settings.dashboardpp_only_safe_scripts = val;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName('Ignore folders list')
+            .setDesc('Comma separated folder paths to skip during dashboard generation.')
+            .addText((text) => {
+                text
+                    .setPlaceholder('Templates, Archive/Old')
+                    .setValue(this.plugin.settings.dashboardpp_ignore_folders)
+                    .onChange(async (val) => {
+                        this.plugin.settings.dashboardpp_ignore_folders = val;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName('Max generation depth')
+            .setDesc('Generate DB_ dashboards recursively up to this folder depth.')
+            .addSlider((slider) => {
+                slider
+                    .setLimits(1, 12, 1)
+                    .setDynamicTooltip()
+                    .setValue(this.plugin.settings.dashboardpp_max_depth)
+                    .onChange(async (val) => {
+                        this.plugin.settings.dashboardpp_max_depth = val;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName('Dashboard filename prefix')
+            .setDesc('Prefix for generated dashboards.')
+            .addText((text) => {
+                text
+                    .setPlaceholder('DB_')
+                    .setValue(this.plugin.settings.dashboardpp_filename_prefix)
+                    .onChange(async (val) => {
+                        this.plugin.settings.dashboardpp_filename_prefix = val || 'DB_';
+                        await this.plugin.saveSettings();
+                    });
+            });
+
     }
 }

@@ -1,4 +1,4 @@
-import { Plugin } from 'obsidian';
+import { Notice, Plugin } from 'obsidian';
 import { DNSettingTab } from './settings';
 import { DNModal } from './dn';
 import { DNSaveSearchModal, DNSaveSearchItem } from './modals/dnsavesearchmodal';
@@ -6,6 +6,7 @@ import { DNSavedSearchesModal } from './modals/dnsavedsearchesmodal';
 import { DNInfoModal } from './modals/dninfomodal';
 import { DNQuickDisplayOptionsModal } from './modals/dnquickdisplayoptionsmodal';
 import { DNDataManager } from 'src/data/dndatamanager';
+import { DashboardGenerator, DashboardScriptPanelModal, ScriptExecutionService } from './dashboardpp';
 
 interface DNSettings {
 	default_view: number;
@@ -44,6 +45,15 @@ interface DNSettings {
 	tags_sidebar_sorted_by_frequency: boolean;
 	onclose_search: string,
 	saved_searches: DNSaveSearchItem[];
+	dashboardpp_enable_script_execution: boolean;
+	dashboardpp_only_safe_scripts: boolean;
+	dashboardpp_ignore_folders: string;
+	dashboardpp_max_depth: number;
+	dashboardpp_filename_prefix: string;
+	dashboardpp_engine_root: string;
+	dashboardpp_script_registry_path: string;
+	dashboardpp_context_rules_path: string;
+	dashboardpp_log_path: string;
 }
 
 export const DEFAULT_SETTINGS: DNSettings = {
@@ -82,7 +92,16 @@ export const DEFAULT_SETTINGS: DNSettings = {
 	tags_sidebar: true,
 	tags_sidebar_sorted_by_frequency: false,
 	onclose_search: '',
-	saved_searches: []
+	saved_searches: [],
+	dashboardpp_enable_script_execution: false,
+	dashboardpp_only_safe_scripts: true,
+	dashboardpp_ignore_folders: '',
+	dashboardpp_max_depth: 3,
+	dashboardpp_filename_prefix: 'DB_',
+	dashboardpp_engine_root: 'O:/_Theophysics_v3/00_SYSTEM/00_ENGINE/01_ENGINE',
+	dashboardpp_script_registry_path: 'O:/_Theophysics_v3/00_SYSTEM/00_ENGINE/01_ENGINE/launchers/script_registry.json',
+	dashboardpp_context_rules_path: 'O:/_Theophysics_v3/00_SYSTEM/00_ENGINE/01_ENGINE/launchers/context_rules.json',
+	dashboardpp_log_path: 'O:/_Theophysics_v3/00_SYSTEM/06_ADMIN/BUILD_LOGS/dashboard_pp_runs.log'
 }
 
 export default class DNPlugin extends Plugin {
@@ -96,12 +115,16 @@ export default class DNPlugin extends Plugin {
 	settings: DNSettings;
 
 	private _DN_DATA_MANAGER: DNDataManager;
+	private _DASHBOARD_GENERATOR: DashboardGenerator;
+	private _SCRIPT_EXECUTION_SERVICE: ScriptExecutionService;
 
 	async onload() {
 
 		await this.loadSettings();
 
 		this._DN_DATA_MANAGER = new DNDataManager();
+		this._DASHBOARD_GENERATOR = new DashboardGenerator(this.app, this);
+		this._SCRIPT_EXECUTION_SERVICE = new ScriptExecutionService(this.app, this);
 
 		const excludedExtensions = this.dnGetExcludedExtensions(this.settings.excluded_ext);
 		const excludedFolders = this.dnGetExcludedFolders(this.settings.excluded_path);
@@ -160,6 +183,32 @@ export default class DNPlugin extends Plugin {
 			callback: () => {
 				this.DN_MODAL.default_view = 1;
 				this.DN_MODAL.open();
+			}
+		});
+
+		this.addCommand({
+			id: 'dashboardpp-generate-folder-dashboards',
+			name: 'Dashboard++: Generate folder dashboards',
+			callback: async () => {
+				const generated = await this._DASHBOARD_GENERATOR.generateAllDashboards();
+				new Notice(`Dashboard++ generated ${generated.length} dashboards.`);
+			}
+		});
+
+		this.addCommand({
+			id: 'dashboardpp-open-current-folder-dashboard',
+			name: 'Dashboard++: Open current folder dashboard',
+			callback: async () => {
+				await this._DASHBOARD_GENERATOR.openCurrentFolderDashboard();
+			}
+		});
+
+		this.addCommand({
+			id: 'dashboardpp-open-script-panel-current-folder',
+			name: 'Dashboard++: Open script panel for current folder',
+			callback: async () => {
+				const folderPath = this.getCurrentFolderPath();
+				new DashboardScriptPanelModal(this.app, this._SCRIPT_EXECUTION_SERVICE, folderPath).open();
 			}
 		});
 
@@ -273,5 +322,14 @@ export default class DNPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	getCurrentFolderPath(): string {
+		const activeFile = this.app.workspace.getActiveFile();
+		if (!activeFile) {
+			return '';
+		}
+		const parent = activeFile.parent;
+		return parent ? parent.path : '';
 	}
 }
